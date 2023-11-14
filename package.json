@@ -14,5 +14,11 @@
     "hardhat-gas-reporter": "^1.0.9",
     "solidity-coverage": "^0.8.5",
     "typechain": "^8.3.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "ipfs": "^0.66.1",
+    "ipfs-http-client": "^60.0.1",
+    "web3": "^4.2.2"
   }
 }

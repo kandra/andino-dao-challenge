@@ -38,15 +38,17 @@ const contractAddress = '0xadC7cd04E6693C816ef8d314e526A5684f13D752';
 const contract = new ethers.Contract(contractAddress, contractABI, relayerWallet);
 
 // Route to handle meta-transactions
-app.get('/relay', async (req, res) => {
+app.get('/mint/:to/:tokenId', async (req, res) => {
     try {
         // const { to, tokenId } = req.body;
         // Validate and process the transaction
         // ...
         
-
-
-        const tx = await contract.safeMint('0x95cA121498fb98A6DD5EB88b81463cA0f74aC214', 124);        
+        // var to = req.body.wallet;
+        // var tokenId = req.body.tokenId;
+        // res.json({ to: to, id: tokenId});
+        // res.json({res: req.params});
+        const tx = await contract.safeMint(req.params.to, req.params.tokenId);        
 
         res.json({ success: true, txHash: tx.hash });
     } catch (error) {

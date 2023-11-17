@@ -1,0 +1,7 @@
+{
+    "name": "Nombre del Token",
+    "description": "Descripción del Token",
+    "image": "URL de la Imagen",
+    "attributes": ["Atributo 1", "Atributo 2"]
+}
+

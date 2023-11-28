@@ -19,13 +19,13 @@ contract PoapContract is ERC1155, Ownable {
 
     event PoapMinted(address indexed account, uint256 tokenId);
     event PoapCreated(
-    string indexed eventName,
-    uint256 indexed tokenId,
-    uint256 indexed createDate,
-    uint256 startingDate,
-    uint256 expiredPoap,
-    string description
-);
+        string indexed eventName,
+        uint256 indexed tokenId,
+        uint256 indexed createDate,
+        uint256 startingDate,
+        uint256 expiredPoap,
+        string description
+    );
 
     event PoapExpired(uint256 indexed tokenId, uint256 indexed expirationDate);
 
@@ -40,14 +40,14 @@ contract PoapContract is ERC1155, Ownable {
 
     mapping(uint256 => Poap) public poaps;
 
-   constructor(string memory _baseURI, address _relayer) 
-    ERC1155("") // Llamada al constructor de ERC1155 con un argumento vacío
-    Ownable(msg.sender) { // Llamada al constructor de Ownable con el remitente del mensaje
-    baseURI = _baseURI;
-    relayer = _relayer;
-    minters[msg.sender] = true; // Establecer al remitente como minter por defecto
-    _currentTokenID = 1; // Inicializar el ID del token en 1
-}
+    constructor(string memory _baseURI, address _relayer) 
+        ERC1155("") // Llamada al constructor de ERC1155 con un argumento vacío
+        Ownable(msg.sender) { // Llamada al constructor de Ownable con el remitente del mensaje
+        baseURI = _baseURI;
+        relayer = _relayer;
+        minters[msg.sender] = true; // Establecer al remitente como minter por defecto
+        _currentTokenID = 1; // Inicializar el ID del token en 1
+    }
 
 
     function createPoap(
@@ -100,18 +100,18 @@ contract PoapContract is ERC1155, Ownable {
     }
 
     function addAddressToEvent(uint256 _eventId, address _newAddress) external onlyOwner {
-    eventAddressList[_eventId].push(_newAddress);
-}
+        eventAddressList[_eventId].push(_newAddress);
+    }
 
-function getEventAddresses(uint256 _eventId) external view returns (address[] memory) {
-    return eventAddressList[_eventId];
-}
+    function getEventAddresses(uint256 _eventId) external view returns (address[] memory) {
+        return eventAddressList[_eventId];
+    }
 
     function getEventMintCount(uint256 _eventId) external view returns (uint256) {
         return eventMintCount[_eventId];
     }
 
- function setBaseURI(string memory newBaseURI) external onlyOwner {
+    function setBaseURI(string memory newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
     }
 
@@ -161,9 +161,9 @@ function getEventAddresses(uint256 _eventId) external view returns (address[] me
     }
 
     function uri(uint256 tokenId) public view override returns (string memory) {
-    require(bytes(baseURI).length > 0, "URI base not set");
-    return string(abi.encodePacked(baseURI, Strings.toString(tokenId)));
-}
+        require(bytes(baseURI).length > 0, "URI base not set");
+        return string(abi.encodePacked(baseURI, Strings.toString(tokenId)));
+    }
 
 }
 

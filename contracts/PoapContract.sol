@@ -23,6 +23,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 startingDate;
         uint256 expirationDate;
         string description;
+        string imgUrl;
     }
 
     // mapping(address => bool) public minters;
@@ -68,7 +69,8 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         string memory _eventName,
         uint256 _startingDate,
         uint256 _expirationDate,
-        string memory _description
+        string memory _description,
+        string memory _imgUrl
     ) public onlyRole(MINTER_ROLE) returns(bytes32) {
         require(_expirationDate > block.timestamp, "La fecha de expiracion debe ser en el futuro");
         require(_startingDate < _expirationDate, "La fecha de expiracion debe ser despues de la fecha de inicio");
@@ -82,7 +84,8 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
             createDate: block.timestamp,
             startingDate: _startingDate,
             expirationDate: _expirationDate,
-            description: _description
+            description: _description,
+            imgUrl: _imgUrl
         });
 
         poapsById[id] = newPoap;
@@ -95,7 +98,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
     function getEvents() public view returns(bytes32[] memory){
         return events;
     }
-    
+
     // function expirePoap(uint256 _tokenId) external {
     //     require(block.timestamp > poaps[_tokenId].expirationDate, "La fecha limite de minteo no ha pasado todavia");
     //     // poaps[_tokenId].expired = true;

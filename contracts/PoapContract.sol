@@ -8,53 +8,56 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-
+import "hardhat/console.sol";
 
 contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    string public baseURI;
-    address public relayer;
-    uint256 private _currentTokenID;
+    // string public baseURI;
+    // address public relayer;
+    // uint256 private _currentTokenID;
+    struct Poap {
+        bytes32 tokenId;
+        string eventName;
+        uint256 createDate;
+        uint256 startingDate;
+        uint256 expirationDate;
+        string description;
+    }
 
-    mapping(address => bool) public minters;
-    mapping(uint256 => uint256) public eventMintCount;
-    mapping(uint256 => mapping(address => bool)) public eventMinters;
-    mapping(uint256 => address[]) public eventAddressList;
+    // mapping(address => bool) public minters;
+    // mapping(uint256 => uint256) public eventMintCount;
+    // mapping(uint256 => mapping(address => bool)) public eventMinters;
+    // mapping(uint256 => address[]) public eventAddressList;
+    mapping(bytes32 id => Poap) public poapsById;
+    bytes32[] public events;
 
     event PoapMinted(address indexed account, uint256 tokenId);
     event PoapCreated(
         string indexed eventName,
-        uint256 indexed tokenId,
+        bytes32 indexed tokenId,
         uint256 indexed createDate,
         uint256 startingDate,
-        uint256 expiredPoap,
+        uint256 expirationDate,
         string description
     );
 
     event PoapExpired(uint256 indexed tokenId, uint256 indexed expirationDate);
 
-    struct Poap {
-        uint256 tokenId;
-        uint256 createDate;
-        uint256 startingDate;
-        uint256 expirationDate;
-        string description;
-        bool expired;
-    }
+    
 
     mapping(uint256 => Poap) public poaps;
 
     // constructor(string memory _baseURI, address _relayer) 
-    constructor(address minter) 
+    constructor() 
         ERC1155("") { // Llamada al constructor de ERC1155 con un argumento vacío
         // Ownable(msg.sender) { // Llamada al constructor de Ownable con el remitente del mensaje
         // baseURI = _baseURI;
         // relayer = _relayer;
         // minters[msg.sender] = true; // Establecer al remitente como minter por defecto
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, minter);
-        _currentTokenID = 1; // Inicializar el ID del token en 1
+        _grantRole(MINTER_ROLE, msg.sender);
+        // _currentTokenID = 1; // Inicializar el ID del token en 1
     }
 
     function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
@@ -63,51 +66,64 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
 
     function createPoap(
         string memory _eventName,
-        uint256 _tokenId,
-        uint256 _createDate,
         uint256 _startingDate,
         uint256 _expirationDate,
         string memory _description
-    ) external onlyOwner {
+    ) public onlyRole(MINTER_ROLE) returns(bytes32) {
         require(_expirationDate > block.timestamp, "La fecha de expiracion debe ser en el futuro");
+        require(_startingDate < _expirationDate, "La fecha de expiracion debe ser despues de la fecha de inicio");
+        require(bytes(_eventName).length > 0, "El Poap debe tener un nombre");
+
+        bytes32 id = keccak256(abi.encodePacked(_eventName, block.timestamp, _startingDate, _expirationDate));
 
         Poap memory newPoap = Poap({
-            tokenId: _tokenId,
-            createDate: _createDate,
+            tokenId: id,
+            eventName: _eventName,
+            createDate: block.timestamp,
             startingDate: _startingDate,
             expirationDate: _expirationDate,
-            description: _description,
-            expired: false
+            description: _description
         });
 
-        poaps[_tokenId] = newPoap;
+        poapsById[id] = newPoap;
+        events.push(id);
 
-        emit PoapCreated(_eventName, _tokenId, _createDate, _startingDate, _expirationDate, _description);
+        emit PoapCreated(_eventName, id, block.timestamp, _startingDate, _expirationDate, _description);
+        return id;
     }
 
-    function expirePoap(uint256 _tokenId) external {
-        require(block.timestamp > poaps[_tokenId].expirationDate, "La fecha limite de minteo no ha pasado todavia");
-        poaps[_tokenId].expired = true;
-
-        emit PoapExpired(_tokenId, poaps[_tokenId].expirationDate);
+    function getEvents() public view returns(bytes32[] memory){
+        return events;
     }
+    
+    // function expirePoap(uint256 _tokenId) external {
+    //     require(block.timestamp > poaps[_tokenId].expirationDate, "La fecha limite de minteo no ha pasado todavia");
+    //     // poaps[_tokenId].expired = true;
+
+    //     emit PoapExpired(_tokenId, poaps[_tokenId].expirationDate);
+    // }
 
     // function setMinter(address _minter, bool _status) external onlyOwner {
     //     minters[_minter] = _status;
     // }
 
-    function mint(address _account, uint256 _eventId, uint256 _amount, bytes memory data) public onlyRole(MINTER_ROLE) {
-        require(minters[msg.sender], "El remitente no tiene permiso para crear Poaps");
-        require(!poaps[_eventId].expired, "El poap ha expirado");
+    function mint(
+        address _account, 
+        bytes32 _eventId 
+        // uint256 _amount, 
+        // bytes memory data
+    ) public onlyRole(MINTER_ROLE) {
+        // require(minters[msg.sender], "El remitente no tiene permiso para crear Poaps");
+        // require(!poaps[_eventId].expired, "El poap ha expirado");
 
-        _mint(_account, _currentTokenID, _amount, "");
-        _currentTokenID++;
+        // _mint(_account, _currentTokenID, _amount, "");
+        // _currentTokenID++;
 
         // Registra el minteo para el evento actual
-        eventMinters[_eventId][_account] = true;
-        eventMintCount[_eventId] += _amount;
+        // eventMinters[_eventId][_account] = true;
+        // eventMintCount[_eventId] += _amount;
 
-        emit PoapMinted(_account, _eventId);
+        // emit PoapMinted(_account, _eventId);
     }
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
@@ -117,17 +133,17 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         _mintBatch(to, ids, amounts, data);
     }
 
-    function addAddressToEvent(uint256 _eventId, address _newAddress) external onlyOwner {
-        eventAddressList[_eventId].push(_newAddress);
-    }
+    // function addAddressToEvent(uint256 _eventId, address _newAddress) external onlyRole(DEFAULT_ADMIN_ROLE)  {
+    //     eventAddressList[_eventId].push(_newAddress);
+    // }
 
-    function getEventAddresses(uint256 _eventId) external view returns (address[] memory) {
-        return eventAddressList[_eventId];
-    }
+    // function getEventAddresses(uint256 _eventId) external view returns (address[] memory) {
+    //     return eventAddressList[_eventId];
+    // }
 
-    function getEventMintCount(uint256 _eventId) external view returns (uint256) {
-        return eventMintCount[_eventId];
-    }
+    // function getEventMintCount(uint256 _eventId) external view returns (uint256) {
+    //     return eventMintCount[_eventId];
+    // }
 
     // function setBaseURI(string memory newBaseURI) external onlyOwner {
     //     baseURI = newBaseURI;

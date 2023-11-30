@@ -5,29 +5,46 @@
 // will compile your contracts, add the Hardhat Runtime Environment's members to the
 // global scope, and execute the script.
 const hre = require("hardhat");
+require("dotenv").config();
 
-async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+const {
+  getRole,
+  verify,
+  ex,
+  printAddress,
+  deploySC,
+  deploySCNoUp,
+} = require("../utils");
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+var MINTER_ROLE = getRole("MINTER_ROLE");
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+// Publicar en Mumbai
+async function deployMumbai() {
+  console.log("Deployando el contrato...");
 
-  await lock.waitForDeployment();
+  // utiliza deploySC
+  var contratoPoap = await deploySCNoUp("PoapContract");
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  // utiliza printAddress
+  console.log("Addresses...")
+  var implementacionContrato = await contratoPoap.getAddress();
+  console.log("Address: " + implementacionContrato);
+
+  // utiliza ex
+
+  console.log("Esperando confirmaciones...");
+  var res = await contratoPoap.waitForDeployment();
+  await res.deploymentTransaction().wait(10);
+  console.log("Confirmaciones recibidas!");
+
+  // utiliza verify
+  console.log("Verificando...")
+  await verify(implementacionContrato, "PublicSale");
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+
+deployMumbai()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

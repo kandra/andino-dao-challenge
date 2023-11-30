@@ -32,22 +32,15 @@ describe("Set up", function () {
 
 describe("Poap management", function () {
     it("protects the creation of a poap", async () => {
-        await expect(contractPoap.connect(alice).createPoap("evento", 1701232998, timeNow + 10000, "description")).to.be.reverted;
+        await expect(contractPoap.connect(alice).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.be.reverted;
     });
     it("eventName, and dates from poap cannot be empty", async () => {
-        await expect(contractPoap.connect(owner).createPoap("", 1701232998, timeNow + 10000, "description")).to.revertedWith("El Poap debe tener un nombre");
-        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", 0, 0, "")).to.revertedWith("La fecha de expiracion debe ser en el futuro");
-        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", timeNow + 1000, timeNow + 100, "")).to.revertedWith("La fecha de expiracion debe ser despues de la fecha de inicio");
+        await expect(contractPoap.connect(owner).createPoap("", 1701232998, timeNow + 10000, "description", "")).to.revertedWith("El Poap debe tener un nombre");
+        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", 0, 0, "", "")).to.revertedWith("La fecha de expiracion debe ser en el futuro");
+        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", timeNow + 1000, timeNow + 100, "", "")).to.revertedWith("La fecha de expiracion debe ser despues de la fecha de inicio");
     });
     it("creates a poap", async () => {
-        await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description")).to.emit(contractPoap,"PoapCreated");
-
-        // var id = ethers.solidityPackedKeccak256(["string", "uint256", "uint256", "uint256"], ["evento", timeNow, 1701232998, timeNow + 10000]);
-        // console.log("id calc: " + id);
-        // var contract_id = await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description");
-        // console.log(contract_id.data);
-        // // console.log(await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description"));
-        // expect(id).to.eq(contract_id);
+        await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.emit(contractPoap,"PoapCreated");
         var events = await contractPoap.getEvents();
         console.log(events);
         expect(events.length).to.be.greaterThan(0);
@@ -56,7 +49,7 @@ describe("Poap management", function () {
         var events = await contractPoap.getEvents();
         
         // Add a new event
-        await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description");
+        await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png");
 
         // Now, there should be a +1 length to the event array
         var events2 = await contractPoap.getEvents();
@@ -66,7 +59,7 @@ describe("Poap management", function () {
         var events = await contractPoap.getEvents();
         var event_id = events[0];
         // console.log("id a enviar: " + event_id);
-        var event = await contractPoap.poapsById(event_id);
+        var event = await contractPoap.poaps(event_id);
         console.log(event);
 
         expect(event.eventName).to.equal("evento");
@@ -79,18 +72,30 @@ describe("Poap management", function () {
 
 describe("Minting poaps", function () {
     it("mint is protected by MINTER_ROLE", async () => {
-    //     const mint = contractPoap.connect(alice).mint;
-    //     await expect(
-    //       mint(alice.address, 1, 1, 0)
-    //     ).to.revertedWith(
-    //       `AccessControl: account ${alice.address.toLowerCase()} is missing role ${MINTER_ROLE}`
-    //     );
+        await expect(contractPoap.connect(alice).mint(alice.address, 1)).to.be.reverted;
     });
-
+    it("cannot mint a non-existing event", async () => {
+        const nonExistingId = 34938429;
+        await expect(contractPoap.connect(owner).mint(alice.address, nonExistingId)).to.be.reverted;
+    });
+    // it("rejects expired events", async () => {});
     it("allows the minter to mint", async () => {
-    //     await contract_CuyCollectionNFT.connect(owner).safeMint(alice.address, 13);
-    //     var tokenOwner = await contract_CuyCollectionNFT.ownerOf(13);
-    //     expect(tokenOwner).to.equal(alice.address, "Minter should have minted the token for the wallet");
+        const eventId = 1;
+        await expect(contractPoap.connect(owner).mint(alice.address, eventId)).to.emit(contractPoap,"PoapMinted");
     });
-    it("lists mints from poaps", async () => {});
+    it("lists poaps minted from an account", async () => {
+        await contractPoap.connect(owner).createPoap("evento3", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
+        await contractPoap.connect(owner).createPoap("evento4", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
+        await contractPoap.connect(owner).mint(alice.address, 2);
+        await contractPoap.connect(owner).mint(alice.address, 3);
+        await contractPoap.connect(owner).mint(alice.address, 4);
+        var arrEvents = await contractPoap.connect(alice).getPoapsByAccount(alice.address);
+// TODO
+        // var abiCoder = AbiCoder.defaultAbiCoder();
+        // console.log(abi.decode(['uint256[]'], arrEvents.data));
+        // console.log(arrEvents);
+    });
+    it("lists mints from poaps", async () => {
+        console.log(await contractPoap.connect(alice).getEventAddresses(1));
+    });
 });

@@ -15,9 +15,9 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     // string public baseURI;
     // address public relayer;
-    // uint256 private _currentTokenID;
+    uint256 public currentTokenId; // maybe private?
     struct Poap {
-        bytes32 tokenId;
+        uint256 tokenId;
         string eventName;
         uint256 createDate;
         uint256 startingDate;
@@ -29,25 +29,24 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
     // mapping(address => bool) public minters;
     // mapping(uint256 => uint256) public eventMintCount;
     // mapping(uint256 => mapping(address => bool)) public eventMinters;
-    // mapping(uint256 => address[]) public eventAddressList;
-    mapping(bytes32 id => Poap) public poapsById;
-    bytes32[] public events;
+    mapping(uint256 events => address[]) public eventAddressList;
+    mapping(address => uint256[] events) public poapsByAccount;
+    uint256[] public events;
 
-    event PoapMinted(address indexed account, uint256 tokenId);
     event PoapCreated(
         string indexed eventName,
-        bytes32 indexed tokenId,
+        uint256 indexed tokenId,
         uint256 indexed createDate,
         uint256 startingDate,
         uint256 expirationDate,
         string description
     );
+    event PoapMinted(address indexed account, uint256 tokenId, uint256 totalSupply);
 
-    event PoapExpired(uint256 indexed tokenId, uint256 indexed expirationDate);
 
     
 
-    mapping(uint256 => Poap) public poaps;
+    mapping(uint256 id => Poap) public poaps;
 
     // constructor(string memory _baseURI, address _relayer) 
     constructor() 
@@ -58,7 +57,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         // minters[msg.sender] = true; // Establecer al remitente como minter por defecto
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
-        // _currentTokenID = 1; // Inicializar el ID del token en 1
+        currentTokenId = 0; // Inicializar el ID del evento en 1
     }
 
     function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
@@ -71,15 +70,21 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 _expirationDate,
         string memory _description,
         string memory _imgUrl
-    ) public onlyRole(MINTER_ROLE) returns(bytes32) {
+    ) public onlyRole(MINTER_ROLE) returns(uint256) {
+        // TODO: Parece que no se pasan los datos sino que se pone en el json en el IPFS?
+        // eventURIs[newEventId] = eventURI;
+        // emit URI(eventURI, newEventId);
+
+
         require(_expirationDate > block.timestamp, "La fecha de expiracion debe ser en el futuro");
         require(_startingDate < _expirationDate, "La fecha de expiracion debe ser despues de la fecha de inicio");
         require(bytes(_eventName).length > 0, "El Poap debe tener un nombre");
 
-        bytes32 id = keccak256(abi.encodePacked(_eventName, block.timestamp, _startingDate, _expirationDate));
+        // bytes32 id = keccak256(abi.encodePacked(_eventName, block.timestamp, _startingDate, _expirationDate));
 
+        currentTokenId++;
         Poap memory newPoap = Poap({
-            tokenId: id,
+            tokenId: currentTokenId,
             eventName: _eventName,
             createDate: block.timestamp,
             startingDate: _startingDate,
@@ -88,120 +93,71 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
             imgUrl: _imgUrl
         });
 
-        poapsById[id] = newPoap;
-        events.push(id);
-
-        emit PoapCreated(_eventName, id, block.timestamp, _startingDate, _expirationDate, _description);
-        return id;
+        poaps[currentTokenId] = newPoap;
+        events.push(currentTokenId);
+        emit PoapCreated(_eventName, currentTokenId, block.timestamp, _startingDate, _expirationDate, _description);
+        return currentTokenId;
     }
 
-    function getEvents() public view returns(bytes32[] memory){
+    function getEvents() public view returns(uint256[] memory){
         return events;
     }
 
-    // function expirePoap(uint256 _tokenId) external {
-    //     require(block.timestamp > poaps[_tokenId].expirationDate, "La fecha limite de minteo no ha pasado todavia");
-    //     // poaps[_tokenId].expired = true;
-
-    //     emit PoapExpired(_tokenId, poaps[_tokenId].expirationDate);
-    // }
-
-    // function setMinter(address _minter, bool _status) external onlyOwner {
-    //     minters[_minter] = _status;
-    // }
-
     function mint(
         address _account, 
-        bytes32 _eventId 
-        // uint256 _amount, 
-        // bytes memory data
+        uint256 _eventId 
     ) public onlyRole(MINTER_ROLE) {
-        // require(minters[msg.sender], "El remitente no tiene permiso para crear Poaps");
-        // require(!poaps[_eventId].expired, "El poap ha expirado");
+        // https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md
 
-        // _mint(_account, _currentTokenID, _amount, "");
-        // _currentTokenID++;
+        require(poaps[_eventId].expirationDate > block.timestamp, "El poap ha expirado");
+        require(balanceOf(_account, _eventId) == 0, "Solo un poap por persona / evento");
+        
+        // TODO: que sea consecutivo el seat
+        // TODO: se debe subir la metadata como un archivo JSON (?) ver: https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md#metadata
+
+        /***
+         * A mint/create operation is essentially a specialized transfer and MUST follow these rules:
+To broadcast the existence of a token ID with no initial balance, the contract SHOULD emit the TransferSingle event from 0x0 to 0x0, with the token creator as _operator, and a _value of 0.
+The "TransferSingle and TransferBatch event rules" MUST be followed as appropriate for the mint(s) (i.e. singles or batches) however the _from argument MUST be set to 0x0 (i.e. zero address) to flag the transfer as a mint to contract observers.
+NOTE: This includes tokens that are given an initial balance in the contract. The balance of the contract MUST also be able to be determined by events alone meaning initial contract balances (for eg. in construction) MUST emit events to reflect those balances too.
+         * * */
+
+        // console.log("supply %s", totalSupply(1));
+        _mint(_account, _eventId, 1, "");
+        // console.log("2 supply %s", totalSupply(1));
+        // console.log("balance de %s es %s", _account, balanceOf(_account, _eventId));
 
         // Registra el minteo para el evento actual
         // eventMinters[_eventId][_account] = true;
         // eventMintCount[_eventId] += _amount;
+        poapsByAccount[_account].push(_eventId);
+        eventAddressList[_eventId].push(_account);
 
-        // emit PoapMinted(_account, _eventId);
+        // required by standard??
+        // event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _value);
+        // event TransferSingle(msg.sender, 0x0, _account, _eventId, 1);
+
+        emit PoapMinted(_account, _eventId, totalSupply(_eventId));
     }
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
         public
         onlyRole(MINTER_ROLE)
     {
-        _mintBatch(to, ids, amounts, data);
+        // _mintBatch(to, ids, amounts, data);
     }
 
-    // function addAddressToEvent(uint256 _eventId, address _newAddress) external onlyRole(DEFAULT_ADMIN_ROLE)  {
-    //     eventAddressList[_eventId].push(_newAddress);
-    // }
-
-    // function getEventAddresses(uint256 _eventId) external view returns (address[] memory) {
-    //     return eventAddressList[_eventId];
-    // }
-
-    // function getEventMintCount(uint256 _eventId) external view returns (uint256) {
-    //     return eventMintCount[_eventId];
-    // }
+    function getEventAddresses(uint256 _eventId) public view returns (address[] memory) {
+        return eventAddressList[_eventId];
+    }
 
     // function setBaseURI(string memory newBaseURI) external onlyOwner {
     //     baseURI = newBaseURI;
     // }
 
-    //  function setRelayer(address _relayer) external onlyOwner {
-    //     relayer = _relayer;
-    // }
-
-    // function addMinter(address _minter) external onlyOwner {
-    //     minters[_minter] = true;
-    // }
-
-    // function removeMinter(address _minter) external onlyOwner {
-    //     minters[_minter] = false;
-    // }
-
-// Por que se duplica el mint?
-    // function mint(address _account, uint256 _eventId, uint256 _amount, bytes memory _signature) external {
-    //     require(minters[msg.sender], "No tiene permisos para crear tokens");
-
-    //     // Verifica que el mensaje fue firmado por el relayer
-    //     bytes32 messageHash = keccak256(abi.encodePacked(_account, _eventId, _amount));
-    //     require(recoverSigner(messageHash, _signature) == relayer, "Firma no valida");
-
-    //     _mint(_account, _eventId, _amount, "");
-    //     emit PoapMinted(_account, _eventId);
-    // }
-
-    // function recoverSigner(bytes32 _messageHash, bytes memory _signature) internal pure returns (address) {
-    //     bytes32 r;
-    //     bytes32 s;
-    //     uint8 v;
-
-    //     require(_signature.length == 65, "Longitud de firma incorrecta");
-
-    //     assembly {
-    //         r := mload(add(_signature, 0x20))
-    //         s := mload(add(_signature, 0x40))
-    //         v := byte(0, mload(add(_signature, 0x60)))
-    //     }
-
-    //     if (v < 27) {
-    //         v += 27;
-    //     }
-
-    //     require(v == 27 || v == 28, "Valor de 'v' invalido");
-
-    //     return ecrecover(_messageHash, v, r, s);
-    // }
-
-    // function uri(uint256 tokenId) public view override returns (string memory) {
-    //     require(bytes(baseURI).length > 0, "URI base not set");
-    //     return string(abi.encodePacked(baseURI, Strings.toString(tokenId)));
-    // }
+    function getPoapsByAccount(address _account) public view returns(uint256[] memory){
+        return poapsByAccount[_account];
+    }
 
     // The following functions are overrides required by Solidity.
 

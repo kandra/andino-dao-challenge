@@ -25,4 +25,10 @@ module.exports = {
   ipfs: {
     // Configuraciones específicas de IPFS si es necesario
   },
+  etherscan: {
+    apiKey: {
+      goerli: process.env.ETHERSCAN_API_KEY,
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY,
+    },
+  },
 }

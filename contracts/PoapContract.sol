@@ -5,12 +5,11 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 // import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 import "hardhat/console.sol";
 
-contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
+contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
     bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     // string public baseURI;
@@ -24,17 +23,19 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 expirationDate;
         string description;
         uint256 maxSupply;
-        string imgUrl;
+    }
+    struct PoapId{
+        uint256 tokenId;
+        uint256 seat;
     }
 
-    // mapping(address => bool) public minters;
-    // mapping(uint256 => uint256) public eventMintCount;
-    // mapping(uint256 => mapping(address => bool)) public eventMinters;
     mapping(uint256 events => address[]) public eventAddressList;
-    mapping(address => uint256[] events) public poapsByAccount;
+    // mapping(address => uint256[] events) public poapsByAccount;
+    mapping(address => PoapId[] events) public poapsByAccount;
     mapping(uint256 id => Poap) public poaps;
-    // mapping(uint256 id => uint256 quantity) private maxSupply;
+    mapping(uint256 => string) private eventURIs;
     uint256[] public eventIds;
+    
 
     event PoapCreated(
         string indexed eventName,
@@ -56,6 +57,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         // minters[msg.sender] = true; // Establecer al remitente como minter por defecto
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(URI_SETTER_ROLE, msg.sender);
         // currentTokenId = 0; // Inicializar el ID del evento en 1
     }
 
@@ -69,7 +71,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 _expirationDate,
         string memory _description,
         uint256 _maxSupply,
-        string memory _imgUrl
+        string memory _uri
     ) public onlyRole(MINTER_ROLE) returns(uint256) {
         // TODO: Parece que no se pasan los datos sino que se pone en el json en el IPFS?
         // eventURIs[newEventId] = eventURI;
@@ -95,12 +97,12 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
             startingDate: _startingDate,
             expirationDate: _expirationDate,
             description: _description,
-            maxSupply: _maxSupply,
-            imgUrl: _imgUrl
+            maxSupply: _maxSupply
         });
 
         poaps[newPoap.tokenId] = newPoap;
         eventIds.push(newPoap.tokenId);
+        eventURIs[newPoap.tokenId] = _uri;
         emit PoapCreated(
             newPoap.eventName, 
             newPoap.tokenId, 
@@ -128,7 +130,6 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         // console.log("%s: %s / %s", _eventId, poaps[_eventId].maxSupply, eventAddressList[_eventId].length);
         require(poaps[_eventId].maxSupply > eventAddressList[_eventId].length, "Maximo numero de poaps emitidos para este evento");
         
-        // TODO: que sea consecutivo el seat
         // TODO: se debe subir la metadata como un archivo JSON (?) ver: https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md#metadata
 
         /***
@@ -144,16 +145,28 @@ NOTE: This includes tokens that are given an initial balance in the contract. Th
         // console.log("balance de %s es %s", _account, balanceOf(_account, _eventId));
 
         // Registra el minteo para el evento actual
-        // eventMinters[_eventId][_account] = true;
-        // eventMintCount[_eventId] += _amount;
-        poapsByAccount[_account].push(_eventId);
         eventAddressList[_eventId].push(_account);
-
-        // required by standard??
-        // event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _value);
-        // event TransferSingle(msg.sender, 0x0, _account, _eventId, 1);
+        PoapId memory newPoapId = PoapId({
+            tokenId: _eventId,
+            seat: eventAddressList[_eventId].length
+        });
+        poapsByAccount[_account].push(newPoapId);
 
         emit PoapMinted(_account, _eventId, totalSupply(_eventId));
+    }
+
+    // Function to set the URI for a specific token ID
+    function setEventURI(uint256 eventId, string memory newURI) public onlyRole(MINTER_ROLE) {
+        // require(bytes(poaps[eventId]).length > 0, "El evento no existe");
+        require(poaps[eventId].createDate > 0, "El evento no existe");
+        eventURIs[eventId] = newURI;
+        emit URI(newURI, eventId);
+    }
+
+    // Override the URI function
+    function uri(uint256 eventId) override public view returns (string memory) {
+        require(bytes(eventURIs[eventId]).length > 0, "POAPToken: URI not set");
+        return eventURIs[eventId];
     }
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
@@ -164,6 +177,7 @@ NOTE: This includes tokens that are given an initial balance in the contract. Th
     }
 
     function getEventAddresses(uint256 _eventId) public view returns (address[] memory) {
+        require(poaps[_eventId].createDate > 0, "El evento no existe");
         return eventAddressList[_eventId];
     }
 
@@ -171,7 +185,7 @@ NOTE: This includes tokens that are given an initial balance in the contract. Th
     //     baseURI = newBaseURI;
     // }
 
-    function getPoapsByAccount(address _account) public view returns(uint256[] memory){
+    function getPoapsByAccount(address _account) public view returns(PoapId[] memory){
         return poapsByAccount[_account];
     }
 

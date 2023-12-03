@@ -14,3 +14,5 @@ npx hardhat run scripts/deploy.js
 # Instrucciones
 
 - Crear un .env (ver el archivo `.env-copy`)
+
+- Correr el servidor ExpressJS en localhost con `node scripts/server.js`

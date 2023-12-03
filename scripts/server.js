@@ -7,58 +7,71 @@ const app = express();
 app.use(express.json());
 
 // Setup Ethereum provider using Alchemy
-//const provider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_URL);
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_URL);
 
 // Relayer's wallet
 const relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
 
 // Contract setup
-//const contractABI = require('./contractABI.json');
 const contractABI = [
-{
+  {
     "inputs": [
-      {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
+        {
+            "internalType": "address",
+            "name": "_account",
+            "type": "address"
+        },
+        {
+            "internalType": "uint256",
+            "name": "_eventId",
+            "type": "uint256"
+        }
     ],
-    "name": "safeMint",
+    "name": "mint",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
-  }];
-const contractAddress = '0xadC7cd04E6693C816ef8d314e526A5684f13D752';
+},
+{
+  "inputs": [],
+  "name": "getEvents",
+  "outputs": [
+      {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+      }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+}];
+const contractAddress = '0xf49976c1e6410a7b9dd8DD46020c6bBb565b994B';
 const contract = new ethers.Contract(contractAddress, contractABI, relayerWallet);
 
 // Route to handle meta-transactions
 app.get('/mint/:to/:tokenId', async (req, res) => {
     try {
-        // const { to, tokenId } = req.body;
-        // Validate and process the transaction
-        // ...
-        
-        // var to = req.body.wallet;
-        // var tokenId = req.body.tokenId;
-        // res.json({ to: to, id: tokenId});
-        // res.json({res: req.params});
-        const tx = await contract.safeMint(req.params.to, req.params.tokenId);        
+      // const { to, tokenId } = req.body;
+      const { to, tokenId } = req.params;
+      console.log("to: " + to);
+      console.log("tokenId: " + tokenId);
 
-        res.json({ success: true, txHash: tx.hash });
+      // TODO: Validate the event exists
+      var events = await contract.getEvents();
+      if(events.indexOf(BigInt(tokenId))<0){
+        throw new Error("Event ID doesn't exist");
+      }
+
+      const tx = await contract.mint(to, tokenId);        
+      res.json({ success: true, txHash: tx.hash });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
 });
 
 app.get('/', (req, res) => {
-    res.send('Hello World! 123')
-})
+  res.redirect('https://andino.vercel.app/')
+});
 
 // Start the server
 const PORT = process.env.PORT || 3000;

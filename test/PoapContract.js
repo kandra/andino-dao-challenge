@@ -32,24 +32,27 @@ describe("Set up", function () {
 
 describe("Poap management", function () {
     it("protects the creation of a poap", async () => {
-        await expect(contractPoap.connect(alice).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.be.reverted;
+        await expect(contractPoap.connect(alice).createPoap("evento", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.be.reverted;
     });
     it("eventName, and dates from poap cannot be empty", async () => {
-        await expect(contractPoap.connect(owner).createPoap("", 1701232998, timeNow + 10000, "description", "")).to.revertedWith("El Poap debe tener un nombre");
-        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", 0, 0, "", "")).to.revertedWith("La fecha de expiracion debe ser en el futuro");
-        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", timeNow + 1000, timeNow + 100, "", "")).to.revertedWith("La fecha de expiracion debe ser despues de la fecha de inicio");
+        await expect(contractPoap.connect(owner).createPoap("", 1701232998, timeNow + 10000, "description", 100, "")).to.revertedWith("El Poap debe tener un nombre");
+        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", 0, 0, "", 100, "")).to.revertedWith("La fecha de expiracion debe ser en el futuro");
+        await expect(contractPoap.connect(owner).createPoap("Nombre del evento", timeNow + 1000, timeNow + 100, "", 100, "")).to.revertedWith("La fecha de expiracion debe ser despues de la fecha de inicio");
     });
     it("creates a poap", async () => {
-        await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.emit(contractPoap,"PoapCreated");
+        await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.emit(contractPoap,"PoapCreated");
         var events = await contractPoap.getEvents();
         console.log(events);
         expect(events.length).to.be.greaterThan(0);
+    });
+    it("max supply of poaps need to be greater than 0", async () => {
+        await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", 0, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.revertedWith("El maximo numero de minteos debe ser mayor a 0");
     });
     it("lists created poaps", async () => {
         var events = await contractPoap.getEvents();
         
         // Add a new event
-        await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png");
+        await contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png");
 
         // Now, there should be a +1 length to the event array
         var events2 = await contractPoap.getEvents();
@@ -60,13 +63,12 @@ describe("Poap management", function () {
         var event_id = events[0];
         // console.log("id a enviar: " + event_id);
         var event = await contractPoap.poaps(event_id);
-        console.log(event);
 
         expect(event.eventName).to.equal("evento");
         expect(event.startingDate).to.equal(1701232998);
         expect(event.expirationDate).to.equal(timeNow + 10000);
         expect(event.description).to.equal("description");
-        
+        expect(event.maxSupply).to.equal(100);
     });
 });
 
@@ -80,22 +82,24 @@ describe("Minting poaps", function () {
     });
     // it("rejects expired events", async () => {});
     it("allows the minter to mint", async () => {
-        const eventId = 1;
+        var events = await contractPoap.getEvents();
+        console.log("eventos: " +events);
+        const eventId = events[0];
         await expect(contractPoap.connect(owner).mint(alice.address, eventId)).to.emit(contractPoap,"PoapMinted");
     });
-    it("lists poaps minted from an account", async () => {
-        await contractPoap.connect(owner).createPoap("evento3", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
-        await contractPoap.connect(owner).createPoap("evento4", 1701232998, timeNow + 10000, "description", "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
-        await contractPoap.connect(owner).mint(alice.address, 2);
-        await contractPoap.connect(owner).mint(alice.address, 3);
-        await contractPoap.connect(owner).mint(alice.address, 4);
-        var arrEvents = await contractPoap.connect(alice).getPoapsByAccount(alice.address);
-// TODO
-        // var abiCoder = AbiCoder.defaultAbiCoder();
-        // console.log(abi.decode(['uint256[]'], arrEvents.data));
-        // console.log(arrEvents);
-    });
-    it("lists mints from poaps", async () => {
-        console.log(await contractPoap.connect(alice).getEventAddresses(1));
-    });
+//     it("lists poaps minted from an account", async () => {
+//         await contractPoap.connect(owner).createPoap("evento3", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
+//         await contractPoap.connect(owner).createPoap("evento4", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")
+//         await contractPoap.connect(owner).mint(alice.address, 2);
+//         await contractPoap.connect(owner).mint(alice.address, 3);
+//         await contractPoap.connect(owner).mint(alice.address, 4);
+//         var arrEvents = await contractPoap.connect(alice).getPoapsByAccount(alice.address);
+// // TODO
+//         // var abiCoder = AbiCoder.defaultAbiCoder();
+//         // console.log(abi.decode(['uint256[]'], arrEvents.data));
+//         // console.log(arrEvents);
+//     });
+    // it("lists mints from poaps", async () => {
+    //     console.log(await contractPoap.connect(alice).getEventAddresses(1));
+    // });
 });

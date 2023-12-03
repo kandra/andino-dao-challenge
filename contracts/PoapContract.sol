@@ -23,6 +23,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 startingDate;
         uint256 expirationDate;
         string description;
+        uint256 maxSupply;
         string imgUrl;
     }
 
@@ -31,7 +32,9 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
     // mapping(uint256 => mapping(address => bool)) public eventMinters;
     mapping(uint256 events => address[]) public eventAddressList;
     mapping(address => uint256[] events) public poapsByAccount;
-    uint256[] public events;
+    mapping(uint256 id => Poap) public poaps;
+    // mapping(uint256 id => uint256 quantity) private maxSupply;
+    uint256[] public eventIds;
 
     event PoapCreated(
         string indexed eventName,
@@ -39,14 +42,10 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 indexed createDate,
         uint256 startingDate,
         uint256 expirationDate,
-        string description
+        string description, 
+        uint256 maxSupply
     );
     event PoapMinted(address indexed account, uint256 tokenId, uint256 totalSupply);
-
-
-    
-
-    mapping(uint256 id => Poap) public poaps;
 
     // constructor(string memory _baseURI, address _relayer) 
     constructor() 
@@ -57,7 +56,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         // minters[msg.sender] = true; // Establecer al remitente como minter por defecto
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
-        currentTokenId = 0; // Inicializar el ID del evento en 1
+        // currentTokenId = 0; // Inicializar el ID del evento en 1
     }
 
     function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
@@ -69,6 +68,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         uint256 _startingDate,
         uint256 _expirationDate,
         string memory _description,
+        uint256 _maxSupply,
         string memory _imgUrl
     ) public onlyRole(MINTER_ROLE) returns(uint256) {
         // TODO: Parece que no se pasan los datos sino que se pone en el json en el IPFS?
@@ -79,28 +79,42 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
         require(_expirationDate > block.timestamp, "La fecha de expiracion debe ser en el futuro");
         require(_startingDate < _expirationDate, "La fecha de expiracion debe ser despues de la fecha de inicio");
         require(bytes(_eventName).length > 0, "El Poap debe tener un nombre");
+        require(_maxSupply>0, "El maximo numero de minteos debe ser mayor a 0");
 
-        // bytes32 id = keccak256(abi.encodePacked(_eventName, block.timestamp, _startingDate, _expirationDate));
+        uint256 id = uint256(keccak256(abi.encodePacked(_eventName, block.timestamp, _startingDate, _expirationDate)));
+        if (poaps[id].createDate != 0){ // What to do if the id has already been taken
+            id++;
+        }
+        console.log("id token: %s", id);
 
-        currentTokenId++;
+        // currentTokenId++;
         Poap memory newPoap = Poap({
-            tokenId: currentTokenId,
+            tokenId: id,
             eventName: _eventName,
             createDate: block.timestamp,
             startingDate: _startingDate,
             expirationDate: _expirationDate,
             description: _description,
+            maxSupply: _maxSupply,
             imgUrl: _imgUrl
         });
 
-        poaps[currentTokenId] = newPoap;
-        events.push(currentTokenId);
-        emit PoapCreated(_eventName, currentTokenId, block.timestamp, _startingDate, _expirationDate, _description);
-        return currentTokenId;
+        poaps[newPoap.tokenId] = newPoap;
+        eventIds.push(newPoap.tokenId);
+        emit PoapCreated(
+            newPoap.eventName, 
+            newPoap.tokenId, 
+            newPoap.createDate, 
+            newPoap.startingDate, 
+            newPoap.expirationDate, 
+            newPoap.description,
+            newPoap.maxSupply
+        );
+        return newPoap.tokenId;
     }
 
     function getEvents() public view returns(uint256[] memory){
-        return events;
+        return eventIds;
     }
 
     function mint(
@@ -109,8 +123,11 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
     ) public onlyRole(MINTER_ROLE) {
         // https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md
 
-        require(poaps[_eventId].expirationDate > block.timestamp, "El poap ha expirado");
+        require(poaps[_eventId].expirationDate > block.timestamp, "El poap ha expirado o no existe");
         require(balanceOf(_account, _eventId) == 0, "Solo un poap por persona / evento");
+        // console.log("minteos del id %s: %s", _eventId, eventAddressList[_eventId].length);
+        // require(poaps[_eventId].maxSupply < eventAddressList[_eventId].length);
+        // TODO: max num minteos
         
         // TODO: que sea consecutivo el seat
         // TODO: se debe subir la metadata como un archivo JSON (?) ver: https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md#metadata

@@ -125,9 +125,8 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply 
 
         require(poaps[_eventId].expirationDate > block.timestamp, "El poap ha expirado o no existe");
         require(balanceOf(_account, _eventId) == 0, "Solo un poap por persona / evento");
-        // console.log("minteos del id %s: %s", _eventId, eventAddressList[_eventId].length);
-        // require(poaps[_eventId].maxSupply < eventAddressList[_eventId].length);
-        // TODO: max num minteos
+        // console.log("%s: %s / %s", _eventId, poaps[_eventId].maxSupply, eventAddressList[_eventId].length);
+        require(poaps[_eventId].maxSupply > eventAddressList[_eventId].length, "Maximo numero de poaps emitidos para este evento");
         
         // TODO: que sea consecutivo el seat
         // TODO: se debe subir la metadata como un archivo JSON (?) ver: https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md#metadata

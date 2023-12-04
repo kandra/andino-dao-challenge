@@ -11,3 +11,8 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.js
 ```
+# Instrucciones
+
+- Crear un .env (ver el archivo `.env-copy`)
+
+- Correr el servidor ExpressJS en localhost con `node scripts/server.js`

@@ -25,5 +25,15 @@
     "ipfs": "^0.66.1",
     "ipfs-http-client": "^60.0.1",
     "web3": "^4.2.2"
+  },
+  "scripts": {
+    "start": "node server.js" 
+  },
+  "ethereum-node-app": {
+    "name": "ethereum-node-app",
+    "version": "1.0.0",
+    "description": "Node.js application for interacting with Ethereum",
+    "main": "server.js"
   }
+  
 }

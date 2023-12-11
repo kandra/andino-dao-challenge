@@ -20,31 +20,30 @@ var MINTER_ROLE = getRole("MINTER_ROLE");
 
 // Publicar en Mumbai
 async function deployMumbai() {
-  console.log("Deployando el contrato...");
+  console.log("Desplegando el contrato...");
 
-  // utiliza deploySC
-  var contratoPoap = await deploySCNoUp("PoapContract");
+  // Despliegue de una nueva versión del contrato
+  var newPoapContract = await deploySCNoUp("PoapContract");
 
-  // utiliza printAddress
-  console.log("Addresses...")
-  var implementacionContrato = await contratoPoap.getAddress();
-  console.log("Address: " + implementacionContrato);
+  // Obteniendo la dirección de la nueva implementación
+  var newImplementationAddress = await newPoapContract.getAddress();
+  console.log("Dirección de la nueva implementación: " + newImplementationAddress);
 
-  // utiliza ex
-
+  // Esperando confirmaciones y verificando
   console.log("Esperando confirmaciones...");
-  var res = await contratoPoap.waitForDeployment();
+  var res = await newPoapContract.waitForDeployment();
   await res.deploymentTransaction().wait(10);
   console.log("Confirmaciones recibidas!");
 
-  // utiliza verify
-  console.log("Verificando...")
-  await verify(implementacionContrato, "PublicSale");
+  console.log("Verificando la nueva implementación...");
+  await verify(newImplementationAddress, "NombreDelContrato");
 }
-
 
 deployMumbai()
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;
   });
+
+
+  

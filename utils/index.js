@@ -67,6 +67,23 @@ async function deploySCNoUp(contractName, args = []) {
   return smartContract;
 }
 
+
+
+async function updateProxyImplementation(proxyContract, newImplementationAddress) {
+  console.log("Actualizando la dirección de implementación en el contrato Proxy...");
+
+  try {
+    // Actualizar la dirección de la implementación en el contrato proxy
+    await proxyContract.getAddress(newImplementationAddress);
+
+    console.log("¡Actualización de la implementación exitosa en el contrato Proxy!");
+  } catch (error) {
+    console.error("Error al actualizar la implementación en el contrato Proxy:", error);
+  }
+}
+
+
+
 module.exports = {
   ex,
   verify,
@@ -75,4 +92,5 @@ module.exports = {
   deploySC,
   deploySCNoUp,
   pEth,
+  updateProxyImplementation,
 };

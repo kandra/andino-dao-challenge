@@ -45,7 +45,7 @@ const contractABI = [
   "stateMutability": "view",
   "type": "function"
 }];
-const contractAddress = '0xf49976c1e6410a7b9dd8DD46020c6bBb565b994B';
+const contractAddress = '0x8AA807dFCF80FE046ABEeC39c391d5931f63d616';
 const contract = new ethers.Contract(contractAddress, contractABI, relayerWallet);
 
 // Route to handle meta-transactions
@@ -70,11 +70,9 @@ app.get('/mint/:to/:tokenId', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.redirect('https://andino.vercel.app/')
+  res.redirect('https://andino.vercel.app/mint')
 });
-
-// Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Cambia el número del puerto aquí
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

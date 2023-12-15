@@ -5,7 +5,7 @@ async function deployMumbai(newImplementationAddress) {
   console.log("Actualizando la dirección de implementación en el contrato PoapContractProxy...");
 
   // Suponiendo que tienes acceso al contrato proxy y su dirección
-  const proxyAddress = "0x8AA807dFCF80FE046ABEeC39c391d5931f63d616"; // Reemplaza con la dirección real del contrato proxy
+  const proxyAddress = process.env.PROXY_ADDRESS; // Reemplaza con la dirección real del contrato proxy
   const PoapContractProxy = await ethers.getContractAt("PoapContractProxy",proxyAddress ); // Reemplaza "PoapContractProxy" por el nombre real de tu contrato proxy
 
   // Actualizar la dirección de la implementación en el contrato proxy

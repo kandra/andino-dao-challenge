@@ -4,7 +4,6 @@ var { ethers } = require("hardhat");
 var { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 const { getRole, deploySC, deploySCNoUp, ex, pEth } = require("../utils");
-const keccak256 = require("keccak256");
 
 const DEFAULT_ADMIN_ROLE = getRole("DEFAULT_ADMIN_ROLE");
 const MINTER_ROLE = getRole("MINTER_ROLE");
@@ -42,7 +41,6 @@ describe("Poap management", function () {
     it("creates a poap", async () => {
         await expect(contractPoap.connect(owner).createPoap("evento", 1701232998, timeNow + 10000, "description", 100, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png")).to.emit(contractPoap,"PoapCreated");
         var events = await contractPoap.getEvents();
-        console.log(events);
         expect(events.length).to.be.greaterThan(0);
     });
     it("max supply of poaps need to be greater than 0", async () => {
@@ -61,7 +59,6 @@ describe("Poap management", function () {
     it("displays the details for a poap", async () => {
         var events = await contractPoap.getEvents();
         var event_id = events[0];
-        // console.log("id a enviar: " + event_id);
         var event = await contractPoap.poaps(event_id);
 
         expect(event.eventName).to.equal("evento");
@@ -82,7 +79,6 @@ describe("Minting poaps", function () {
     });
     it("allows the minter to mint", async () => {
         var events = await contractPoap.getEvents();
-        console.log("eventos: " +events);
         const eventId = events[0];
         await expect(contractPoap.connect(owner).mint(alice.address, eventId)).to.emit(contractPoap,"PoapMinted");
     });
@@ -90,7 +86,6 @@ describe("Minting poaps", function () {
         await contractPoap.createPoap(
             "evento", 1701232998, timeNow + 10000, "description", 1, "https://ipfs.io/ipfs/QmVFTyfbzo2v4L3R4uSgF46nmiRCwNFHniVZAZLotKy8Me?filename=5.png"
         );
-        // console.log(eventId.data);
         var eventId = await contractPoap.getEvents();
         await contractPoap.connect(owner).mint(alice.address, eventId[eventId.length-1]);
         await expect(contractPoap.connect(owner).mint(bob.address, eventId[eventId.length-1])).to.revertedWith("Maximo numero de poaps emitidos para este evento");

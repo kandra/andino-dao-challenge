@@ -2,17 +2,14 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-// import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-import "hardhat/console.sol";
 
 contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
     bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    uint256 public currentTokenId; // maybe private?
     struct Poap {
         uint256 tokenId;
         string eventName;
@@ -28,7 +25,6 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
     }
 
     mapping(uint256 events => address[]) public eventAddressList;
-    // mapping(address => uint256[] events) public poapsByAccount;
     mapping(address => PoapId[] events) public poapsByAccount;
     mapping(uint256 id => Poap) public poaps;
     mapping(uint256 => string) private eventURIs;
@@ -46,13 +42,11 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
     );
     event PoapMinted(address indexed account, uint256 tokenId, uint256 totalSupply);
 
-    // constructor(string memory _baseURI, address _relayer) 
     constructor() 
         ERC1155("") { // Llamada al constructor de ERC1155 con un argumento vacío
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(URI_SETTER_ROLE, msg.sender);
-        // currentTokenId = 0; // Inicializar el ID del evento en 1
     }
 
     function setURI(string memory newuri) public onlyRole(URI_SETTER_ROLE) {
@@ -76,9 +70,7 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
         if (poaps[id].createDate != 0){ // What to do if the id has already been taken
             id++;
         }
-        console.log("id token: %s", id);
 
-        // currentTokenId++;
         Poap memory newPoap = Poap({
             tokenId: id,
             eventName: _eventName,
@@ -112,15 +104,12 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
         address _account, 
         uint256 _eventId 
     ) public onlyRole(MINTER_ROLE) {
-        // https://github.com/ethereum/ercs/blob/master/ERCS/erc-1155.md
 
         require(poaps[_eventId].expirationDate > block.timestamp, "El poap ha expirado o no existe");
         require(balanceOf(_account, _eventId) == 0, "Solo un poap por persona / evento");
-        // console.log("%s: %s / %s", _eventId, poaps[_eventId].maxSupply, eventAddressList[_eventId].length);
         require(poaps[_eventId].maxSupply > eventAddressList[_eventId].length, "Maximo numero de poaps emitidos para este evento");
         
         _mint(_account, _eventId, 1, "");
-        // console.log("2 supply %s", totalSupply(1));
 
         // Registra el minteo para el evento actual
         eventAddressList[_eventId].push(_account);
@@ -135,7 +124,6 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
 
     // Function to set the URI for a specific token ID
     function setEventURI(uint256 eventId, string memory newURI) public onlyRole(MINTER_ROLE) {
-        // require(bytes(poaps[eventId]).length > 0, "El evento no existe");
         require(poaps[eventId].createDate > 0, "El evento no existe");
         eventURIs[eventId] = newURI;
         emit URI(newURI, eventId);
@@ -151,17 +139,12 @@ contract PoapContract is ERC1155, AccessControl, ERC1155Supply  {
         public
         onlyRole(MINTER_ROLE)
     {
-        // _mintBatch(to, ids, amounts, data);
     }
 
     function getEventAddresses(uint256 _eventId) public view returns (address[] memory) {
         require(poaps[_eventId].createDate > 0, "El evento no existe");
         return eventAddressList[_eventId];
     }
-
-    // function setBaseURI(string memory newBaseURI) external onlyOwner {
-    //     baseURI = newBaseURI;
-    // }
 
     function getPoapsByAccount(address _account) public view returns(PoapId[] memory){
         return poapsByAccount[_account];
